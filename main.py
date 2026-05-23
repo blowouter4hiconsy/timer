@@ -2,6 +2,7 @@ import streamlit as st
 from datetime import datetime, time as dtime, timedelta
 import pytz
 import time
+import os  # 🌟 폴더 안의 mp3 파일을 읽어오기 위해 추가!
 
 # 1. 페이지 설정 및 서울 타임존 고정
 st.set_page_config(page_title="수능형 사내 시험 타이머", layout="centered")
@@ -9,15 +10,6 @@ KST = pytz.timezone('Asia/Seoul')
 
 st.title("⏱️ 수능 실전형 자동 시험 타이머")
 st.caption("※ 실제 수능 시간표 및 종소리 파일과 연동하여 작동합니다 (sounds/ 폴더 기준).")
-
-# 전체 20개 파일 목록 정의 (sounds/ 폴더 안에 있다고 가정)
-ALL_AUDIO_FILES = [
-    "01 0825 1교시 예비령.mp3", "02 0835 1교시 준비령.mp3", "03 0840 1교시 본령.mp3", "04 1000 1교시 종료령.mp3",
-    "05 1020 2교시 예비령.mp3", "06 1025 2교시 준비령.mp3", "07 1030 2교시 본령.mp3", "08 1210 2교시 종료령.mp3",
-    "09 1300 3교시 예비령.mp3", "10 1307 3교시 영어듣기.mp3", "11 1420 3교시 종료령.mp3",
-    "12 1440 4교시 한국사 예비령.mp3", "13 1445 4교시 한국사 준비령.mp3", "14 1450 4교시 한국사 본령.mp3", "15 1520 4교시 한국사 종료령.mp3",
-    "16 1525 4교시 탐구 준비령.mp3", "17 1535 4교시 탐구 첫째본령.mp3", "18 1605 4교시 탐구 첫째종료령.mp3", "19 1607 4교시 탐구 둘째본령.mp3", "20 1637 4교시 탐구 둘째종료령.mp3"
-]
 
 # 2. 시험 과목 및 테스트 선택 드롭다운
 exam_type = st.selectbox(
@@ -28,15 +20,44 @@ exam_type = st.selectbox(
         "2교시 수학", 
         "3교시 영어 (듣기 자동포함)", 
         "4교시 한국사/탐구 (연속진행)", 
-        "🔥 종합 종소리 테스트 (30초 간격 & 수동 제어)" # 이름 변경
+        "🔥 종합 종소리 테스트 (30초 간격 & 수동 제어)"
     ]
 )
 
-# 🛠️ [추가] 테스트 모드일 때만 수동으로 파일 번호를 조절할 수 있는 슬라이더 노출
-test_index = 0
+# 🎧 [핵심 추가] 영어 듣기 파일 자동 탐색 및 드롭다운 선택 로직
+# sounds/ 폴더 안의 모든 mp3 파일을 찾아서 리스트로 만듭니다.
+try:
+    available_mp3s = [f for f in os.listdir("sounds") if f.endswith(".mp3")]
+except FileNotFoundError:
+    available_mp3s = ["10 1310 3교시 영어듣기.mp3"] # 폴더가 없을 경우의 임시 기본값
+
+# 영어가 포함된 일정을 선택했을 때만 파일 선택 드롭다운 노출
+if exam_type in ["☀️ 전교시 자동 진행 (1~4교시 전체)", "3교시 영어 (듣기 자동포함)", "🔥 종합 종소리 테스트 (30초 간격 & 수동 제어)"]:
+    st.markdown("### 🎧 3교시 영어 듣기 파일 설정")
+    selected_english_file = st.selectbox(
+        "13시 10분에 자동 재생될 듣기평가 파일을 고르세요:", 
+        options=available_mp3s
+    )
+else:
+    # 영어가 없는 교시를 골랐을 때는 내부적으로 임시값만 들고 있음
+    selected_english_file = "10 1310 3교시 영어듣기.mp3"
+
+st.markdown("---")
+
+# 전체 20개 파일 목록 정의 (선택한 영어 듣기 파일이 10번째 인덱스에 자동 삽입됨!)
+ALL_AUDIO_FILES = [
+    "01 0825 1교시 예비령.mp3", "02 0835 1교시 준비령.mp3", "03 0840 1교시 본령.mp3", "04 1000 1교시 종료령.mp3",
+    "05 1020 2교시 예비령.mp3", "06 1025 2교시 준비령.mp3", "07 1030 2교시 본령.mp3", "08 1210 2교시 종료령.mp3",
+    "09 1300 3교시 예비령.mp3", 
+    selected_english_file,  # 🌟 드롭다운에서 선택한 파일이 자동으로 여기에 들어갑니다.
+    "11 1420 3교시 종료령.mp3",
+    "12 1440 4교시 한국사 예비령.mp3", "13 1445 4교시 한국사 준비령.mp3", "14 1450 4교시 한국사 본령.mp3", "15 1520 4교시 한국사 종료령.mp3",
+    "16 1525 4교시 탐구 준비령.mp3", "17 1535 4교시 탐구 첫째본령.mp3", "18 1605 4교시 탐구 첫째종료령.mp3", "19 1607 4교시 탐구 둘째본령.mp3", "20 1637 4교시 탐구 둘째종료령.mp3"
+]
+
+# 🛠️ 테스트 모드일 때 수동으로 파일 번호를 조절할 수 있는 슬라이더
 if exam_type == "🔥 종합 종소리 테스트 (30초 간격 & 수동 제어)":
     st.markdown("### 🎛️ 테스트 수동 제어 패널")
-    # 1번부터 20번까지 슬라이더로 선택 가능 (세션 상태와 연동하여 자동/수동 제어 가능하도록 구성)
     if "current_test_idx" not in st.session_state:
         st.session_state.current_test_idx = 1
         
@@ -48,10 +69,8 @@ if exam_type == "🔥 종합 종소리 테스트 (30초 간격 & 수동 제어)"
         key="test_slider"
     )
     
-    # 사용자가 슬라이더를 강제로 움직였다면 기준 시간 및 인덱스 재조정
     if slider_idx != st.session_state.current_test_idx:
         st.session_state.current_test_idx = slider_idx
-        # 수동 조작 시 해당 파일이 바로 재생될 수 있도록 fired 목록에서 제거하고 시작 시간 보정
         current_file = ALL_AUDIO_FILES[slider_idx - 1]
         if current_file in st.session_state.fired:
             st.session_state.fired.remove(current_file)
@@ -70,7 +89,6 @@ if not st.session_state.run:
     if st.button("🚀 타이머/테스트 시작", use_container_width=True, type="primary"):
         st.session_state.run = True
         st.session_state.fired = []
-        # 시작할 때 현재 슬라이더 위치를 기준으로 타임라인 시작 시간 설정
         if exam_type == "🔥 종합 종소리 테스트 (30초 간격 & 수동 제어)":
             st.session_state.start_time = time.time() - ((st.session_state.current_test_idx - 1) * 30)
         else:
@@ -94,25 +112,20 @@ if st.session_state.run:
     audio_spot = st.empty()
 
     while st.session_state.run:
-        # ------------------------------------------------------------------
         # [A] 🔥 종합 종소리 테스트 모드 (30초 간격 및 수동 이동 로직)
-        # ------------------------------------------------------------------
         if exam_type == "🔥 종합 종소리 테스트 (30초 간격 & 수동 제어)":
             elapsed = int(time.time() - st.session_state.start_time)
-            idx = elapsed // 30  # 🌟 30초마다 인덱스 1씩 증가
+            idx = elapsed // 30  
             
-            # 20개 파일을 다 돌았으면 종료
             if idx >= len(ALL_AUDIO_FILES):
-                status_spot.success("🎉 모든 종소리 파일 파일 테스트가 완료되었습니다!")
+                status_spot.success("🎉 모든 종소리 파일 테스트가 완료되었습니다!")
                 st.session_state.run = False
                 break
                 
-            # 현재 인덱스를 세션 상태에 실시간 업데이트 (슬라이더 위치가 자동으로 따라 움직임)
             st.session_state.current_test_idx = idx + 1
             current_file = ALL_AUDIO_FILES[idx]
-            countdown = 30 - (elapsed % 30) # 🌟 30초 기준 카운트다운
+            countdown = 30 - (elapsed % 30) 
             
-            # 화면 표시
             clock_spot.markdown(f"""
             <div style='text-align: center; border: 2px solid #FF4B4B; padding: 15px; border-radius: 10px; background-color: #FFF0F0;'>
                 <p style='margin: 0; color: #FF4B4B; font-weight: bold;'>🚨 전체 종소리 기능 테스트 중 ({idx + 1} / {len(ALL_AUDIO_FILES)})</p>
@@ -121,15 +134,12 @@ if st.session_state.run:
             </div>
             """, unsafe_allow_html=True)
             
-            # 한 번만 음원 재생 리드
             if current_file not in st.session_state.fired:
                 st.session_state.fired.append(current_file)
                 with audio_spot:
                     st.audio(f"sounds/{current_file}", autoplay=True)
 
-        # ------------------------------------------------------------------
         # [B] ⏰ 실제 교시별 수능 시험 모드 로직
-        # ------------------------------------------------------------------
         else:
             now = datetime.now(KST)
             curr = now.time()
@@ -139,7 +149,9 @@ if st.session_state.run:
                 schedules = {
                     dtime(8, 25): "01 0825 1교시 예비령.mp3", dtime(8, 35): "02 0835 1교시 준비령.mp3", dtime(8, 40): "03 0840 1교시 본령.mp3", dtime(10, 0): "04 1000 1교시 종료령.mp3",
                     dtime(10, 20): "05 1020 2교시 예비령.mp3", dtime(10, 25): "06 1025 2교시 준비령.mp3", dtime(10, 30): "07 1030 2교시 본령.mp3", dtime(12, 10): "08 1210 2교시 종료령.mp3",
-                    dtime(13, 0): "09 1300 3교시 예비령.mp3", dtime(13, 7): "10 1307 3교시 영어듣기.mp3", dtime(14, 20): "11 1420 3교시 종료령.mp3",
+                    dtime(13, 0): "09 1300 3교시 예비령.mp3", 
+                    dtime(13, 10): selected_english_file,  # 🌟 13시 10분, 선택한 파일 재생!
+                    dtime(14, 20): "11 1420 3교시 종료령.mp3",
                     dtime(14, 40): "12 1440 4교시 한국사 예비령.mp3", dtime(14, 45): "13 1445 4교시 한국사 준비령.mp3", dtime(14, 50): "14 1450 4교시 한국사 본령.mp3", dtime(15, 20): "15 1520 4교시 한국사 종료령.mp3",
                     dtime(15, 25): "16 1525 4교시 탐구 준비령.mp3", dtime(15, 35): "17 1535 4교시 탐구 첫째본령.mp3", dtime(16, 5): "18 1605 4교시 탐구 첫째종료령.mp3",
                     dtime(16, 7): "19 1607 4교시 탐구 둘째본령.mp3", dtime(16, 37): "20 1637 4교시 탐구 둘째종료령.mp3"
@@ -149,7 +161,11 @@ if st.session_state.run:
             elif exam_type == "2교시 수학":
                 schedules = {dtime(10, 20): "05 1020 2교시 예비령.mp3", dtime(10, 25): "06 1025 2교시 준비령.mp3", dtime(10, 30): "07 1030 2교시 본령.mp3", dtime(12, 10): "08 1210 2교시 종료령.mp3"}
             elif exam_type == "3교시 영어 (듣기 자동포함)":
-                schedules = {dtime(13, 0): "09 1300 3교시 예비령.mp3", dtime(13, 7): "10 1307 3교시 영어듣기.mp3", dtime(14, 20): "11 1420 3교시 종료령.mp3"}
+                schedules = {
+                    dtime(13, 0): "09 1300 3교시 예비령.mp3", 
+                    dtime(13, 10): selected_english_file,  # 🌟 여기도 13시 10분, 선택 파일 반영
+                    dtime(14, 20): "11 1420 3교시 종료령.mp3"
+                }
             elif exam_type == "4교시 한국사/탐구 (연속진행)":
                 schedules = {
                     dtime(14, 40): "12 1440 4교시 한국사 예비령.mp3", dtime(14, 45): "13 1445 4교시 한국사 준비령.mp3", dtime(14, 50): "14 1450 4교시 한국사 본령.mp3", dtime(15, 20): "15 1520 4교시 한국사 종료령.mp3",
