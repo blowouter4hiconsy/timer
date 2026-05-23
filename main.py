@@ -58,8 +58,48 @@ else:
 st.markdown("---")
 
 # 5. 실시간 감시 루프
-elif curr >= times["main"] and curr < times["end"]:
-            # 남은 시간 실시간 계산 (수정됨)
+if st.session_state.run and st.session_state.times:
+    clock_spot = st.empty()
+    status_spot = st.empty()
+    audio_spot = st.empty()
+    
+    # 테스트 모드일 때 사용자가 인지하기 쉽게 타임라인 안내 메시지 추가
+    if exam_type != "1교시 국어":
+        st.info(f"⚙️ **테스트 모드 가동 중** (예비령 예정 시각: {st.session_state.times['pre'].strftime('%H:%M:%S')})")
+
+    while st.session_state.run:
+        now = datetime.now(KST)
+        curr = now.time()
+        times = st.session_state.times
+
+        # 매 초마다 오디오 공간 비우기 (중복 재생 방지)
+        audio_spot.empty()
+
+        # 실시간 시계 노출 (시, 분, 초 단위까지 확인 가능)
+        clock_spot.markdown(f"""
+        <div style='text-align: center; border: 2px solid #4B79A1; padding: 15px; border-radius: 10px; background-color: #F0F4F8;'>
+            <p style='margin: 0; color: #555; font-weight: bold;'>{exam_type} - 현재 서울 시간</p>
+            <h1 style='margin: 0; font-size: 60px; color: #4B79A1;'>{now.strftime('%H:%M:%S')}</h1>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # 타임라인별 알람 트리거
+        if curr >= times["pre"] and curr < times["ready"]:
+            status_spot.warning(f"🔔 [예비령] 시험 준비 시각입니다. ({times['pre'].strftime('%H:%M:%S')})")
+            if "pre" not in st.session_state.fired:
+                st.session_state.fired.append("pre")
+                with audio_spot:
+                    st.components.v1.html(f'<audio autoplay><source src="{ALARM_URL}" type="audio/ogg"></audio>', height=0)
+
+        elif curr >= times["ready"] and curr < times["main"]:
+            status_spot.error(f"🔔 [준비령] 문제지 배부 및 인적사항 기재 시각입니다. ({times['ready'].strftime('%H:%M:%S')})")
+            if "ready" not in st.session_state.fired:
+                st.session_state.fired.append("ready")
+                with audio_spot:
+                    st.components.v1.html(f'<audio autoplay><source src="{ALARM_URL}" type="audio/ogg"></audio>', height=0)
+
+        elif curr >= times["main"] and curr < times["end"]:
+            # 남은 시간 실시간 계산
             end_dt = KST.localize(datetime.combine(now.date(), times["end"]))
             rem = int((end_dt - now).total_seconds())
             mins, secs = divmod(rem, 60)
@@ -80,7 +120,7 @@ elif curr >= times["main"] and curr < times["end"]:
             st.session_state.run = False
             break
         else:
-            # 아직 예비령 시간이 안 되었을 때 남은 초 표시 (수정됨)
+            # 아직 예비령 시간이 안 되었을 때 남은 초 표시
             pre_dt = KST.localize(datetime.combine(now.date(), times["pre"]))
             wait_secs = int((pre_dt - now).total_seconds())
             status_spot.write(f"⏳ 시험 시작 대기 중... (예비령까지 {wait_secs}초 남음)")
