@@ -19,7 +19,7 @@ ALL_AUDIO_FILES = [
     "16 1525 4교시 탐구 준비령.mp3", "17 1535 4교시 탐구 첫째본령.mp3", "18 1605 4교시 탐구 첫째종료령.mp3", "19 1607 4교시 탐구 둘째본령.mp3", "20 1637 4교시 탐구 둘째종료령.mp3"
 ]
 
-# 2. 시험 과목 및 테스트 선택 드롭다운 (전체 자동 모드 포함)
+# 2. 시험 과목 및 테스트 선택 드롭다운
 exam_type = st.selectbox(
     "진행할 항목을 선택하세요:", 
     [
@@ -28,9 +28,34 @@ exam_type = st.selectbox(
         "2교시 수학", 
         "3교시 영어 (듣기 자동포함)", 
         "4교시 한국사/탐구 (연속진행)", 
-        "🔥 종합 종소리 테스트 (10초 간격 순차재생)"
+        "🔥 종합 종소리 테스트 (30초 간격 & 수동 제어)" # 이름 변경
     ]
 )
+
+# 🛠️ [추가] 테스트 모드일 때만 수동으로 파일 번호를 조절할 수 있는 슬라이더 노출
+test_index = 0
+if exam_type == "🔥 종합 종소리 테스트 (30초 간격 & 수동 제어)":
+    st.markdown("### 🎛️ 테스트 수동 제어 패널")
+    # 1번부터 20번까지 슬라이더로 선택 가능 (세션 상태와 연동하여 자동/수동 제어 가능하도록 구성)
+    if "current_test_idx" not in st.session_state:
+        st.session_state.current_test_idx = 1
+        
+    slider_idx = st.slider(
+        "테스트할 파일 번호를 선택하세요 (드래그하거나 방향키 조절):", 
+        min_value=1, 
+        max_value=len(ALL_AUDIO_FILES), 
+        value=st.session_state.current_test_idx,
+        key="test_slider"
+    )
+    
+    # 사용자가 슬라이더를 강제로 움직였다면 기준 시간 및 인덱스 재조정
+    if slider_idx != st.session_state.current_test_idx:
+        st.session_state.current_test_idx = slider_idx
+        # 수동 조작 시 해당 파일이 바로 재생될 수 있도록 fired 목록에서 제거하고 시작 시간 보정
+        current_file = ALL_AUDIO_FILES[slider_idx - 1]
+        if current_file in st.session_state.fired:
+            st.session_state.fired.remove(current_file)
+        st.session_state.start_time = time.time() - ((slider_idx - 1) * 30)
 
 # 3. 타이머 구동 상태 관리 변수 초기화
 if "run" not in st.session_state:
@@ -45,13 +70,19 @@ if not st.session_state.run:
     if st.button("🚀 타이머/테스트 시작", use_container_width=True, type="primary"):
         st.session_state.run = True
         st.session_state.fired = []
-        st.session_state.start_time = time.time()  # 테스트 모드용 시작 시간 기록
+        # 시작할 때 현재 슬라이더 위치를 기준으로 타임라인 시작 시간 설정
+        if exam_type == "🔥 종합 종소리 테스트 (30초 간격 & 수동 제어)":
+            st.session_state.start_time = time.time() - ((st.session_state.current_test_idx - 1) * 30)
+        else:
+            st.session_state.start_time = time.time()
         st.rerun()
 else:
     if st.button("⏹️ 타이머 중지 및 초기화", use_container_width=True):
         st.session_state.run = False
         st.session_state.fired = []
         st.session_state.start_time = None
+        if "current_test_idx" in st.session_state:
+            st.session_state.current_test_idx = 1
         st.rerun()
 
 st.markdown("---")
@@ -64,21 +95,22 @@ if st.session_state.run:
 
     while st.session_state.run:
         # ------------------------------------------------------------------
-        # [A] 🔥 종합 종소리 테스트 모드 (10초 간격 순차 재생) 로직
+        # [A] 🔥 종합 종소리 테스트 모드 (30초 간격 및 수동 이동 로직)
         # ------------------------------------------------------------------
-        if exam_type == "🔥 종합 종소리 테스트 (10초 간격 순차재생)":
+        if exam_type == "🔥 종합 종소리 테스트 (30초 간격 & 수동 제어)":
             elapsed = int(time.time() - st.session_state.start_time)
-            idx = elapsed // 10  # 10초마다 인덱스 1씩 증가
+            idx = elapsed // 30  # 🌟 30초마다 인덱스 1씩 증가
             
             # 20개 파일을 다 돌았으면 종료
             if idx >= len(ALL_AUDIO_FILES):
                 status_spot.success("🎉 모든 종소리 파일 파일 테스트가 완료되었습니다!")
-                # 풍선 애니메이션 삭제됨
                 st.session_state.run = False
                 break
                 
+            # 현재 인덱스를 세션 상태에 실시간 업데이트 (슬라이더 위치가 자동으로 따라 움직임)
+            st.session_state.current_test_idx = idx + 1
             current_file = ALL_AUDIO_FILES[idx]
-            countdown = 10 - (elapsed % 10)
+            countdown = 30 - (elapsed % 30) # 🌟 30초 기준 카운트다운
             
             # 화면 표시
             clock_spot.markdown(f"""
@@ -89,7 +121,7 @@ if st.session_state.run:
             </div>
             """, unsafe_allow_html=True)
             
-            # 10초가 되는 시점에 한 번만 음원 재생 리드
+            # 한 번만 음원 재생 리드
             if current_file not in st.session_state.fired:
                 st.session_state.fired.append(current_file)
                 with audio_spot:
@@ -102,10 +134,7 @@ if st.session_state.run:
             now = datetime.now(KST)
             curr = now.time()
             
-            # 교시별 타임라인 스케줄 매핑
             schedules = {}
-            
-            # 🌟 [핵심] 전교시 자동 진행 모드일 경우 1교시부터 4교시까지 모두 합침
             if exam_type == "☀️ 전교시 자동 진행 (1~4교시 전체)":
                 schedules = {
                     dtime(8, 25): "01 0825 1교시 예비령.mp3", dtime(8, 35): "02 0835 1교시 준비령.mp3", dtime(8, 40): "03 0840 1교시 본령.mp3", dtime(10, 0): "04 1000 1교시 종료령.mp3",
@@ -128,7 +157,6 @@ if st.session_state.run:
                     dtime(16, 7): "19 1607 4교시 탐구 둘째본령.mp3", dtime(16, 37): "20 1637 4교시 탐구 둘째종료령.mp3"
                 }
 
-            # 현재 시간 시계 노출
             clock_spot.markdown(f"""
             <div style='text-align: center; border: 2px solid #4B79A1; padding: 15px; border-radius: 10px; background-color: #F0F4F8;'>
                 <p style='margin: 0; color: #555; font-weight: bold;'>{exam_type} - 현재 서울 표준시</p>
@@ -136,7 +164,6 @@ if st.session_state.run:
             </div>
             """, unsafe_allow_html=True)
 
-            # 타임라인 체크 및 알람 재생
             for target_time, file_name in schedules.items():
                 if curr.hour == target_time.hour and curr.minute == target_time.minute:
                     if file_name not in st.session_state.fired:
@@ -144,23 +171,17 @@ if st.session_state.run:
                         with audio_spot:
                             st.audio(f"sounds/{file_name}", autoplay=True)
             
-            # 상태 메시지 관리 (현재 진행 중인 상태 파악용)
             upcoming = [t for t in schedules.keys() if curr < t]
             if upcoming:
                 next_time = min(upcoming)
                 next_file = schedules[next_time]
-                
-                # 안내 메시지를 보기 좋게 가공 ("01 0825 1교시 예비령.mp3" -> "1교시 예비령")
                 display_name = " ".join(next_file.split(' ')[2:]).replace('.mp3', '')
-                
                 next_dt = KST.localize(datetime.combine(now.date(), next_time))
                 rem_secs = int((next_dt - now).total_seconds())
                 mins, secs = divmod(rem_secs, 60)
                 status_spot.info(f"⏳ 다음 방송 예정: **{display_name}** ({mins}분 {secs}초 남음)")
             else:
-                # 모든 일정이 끝난 경우
                 status_spot.markdown("<h1 style='text-align: center; color: red;'>🚨 모든 시험 일정이 종료되었습니다 🚨</h1>", unsafe_allow_html=True)
-                # 풍선 애니메이션 삭제됨
                 st.session_state.run = False
                 break
 
