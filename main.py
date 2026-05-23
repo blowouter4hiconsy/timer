@@ -210,7 +210,7 @@ if st.session_state.run:
                 mins, secs = divmod(rem_secs, 60)
                 status_spot.info(f"⏳ 다음 방송 예정: **{display_name}** ({mins}분 {secs}초 남음)")
             else:
-                status_spot.markdown("<h1 style='text-align: center; color: red;'>🚨모든 시험 일정이 종료되었습니다🚨</h1>", unsafe_allow_html=True)
+                status_spot.markdown("<h1 style='text-align: center; color: red; white-space: nowrap;'>🚨 모든 시험 일정이 종료되었습니다 🚨</h1>", unsafe_allow_html=True)
                 st.session_state.run = False
                 break
 
