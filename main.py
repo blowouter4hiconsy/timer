@@ -3,9 +3,9 @@ from datetime import datetime, time as dtime
 import pytz
 import time
 
-# 1. 서울 표준시 설정
-KST = pytz.timezone('Asia/Seoul')
+# 1. 페이지 설정 및 서울 타임존 고정
 st.set_page_config(page_title="사내 시험 타이머", layout="centered")
+KST = pytz.timezone('Asia/Seoul')
 
 st.title("⏱️ 사내 평가용 자동 시험 타이머")
 st.caption("※ 서울 표준시 기준으로 작동하며, 기기 상관없이 브라우저에서 바로 사용 가능합니다.")
@@ -22,7 +22,7 @@ if exam_type == "1교시 국어":
         "end": dtime(10, 0)     # 종료령
     }
 else:
-    # 테스트하시기 편하게 현재 시간 기준으로 임의 조정해서 쓰세요!
+    # 테스트용 시간 (현재 컴퓨터 시간 근처로 자유롭게 수정해서 테스트하세요)
     times = {
         "pre": dtime(13, 0),
         "ready": dtime(13, 5),
@@ -76,13 +76,15 @@ if st.session_state.run:
             status_spot.warning(f"🔔 [예비령] 시험 준비 시각입니다. ({times['pre'].strftime('%H:%M')})")
             if "pre" not in st.session_state.fired:
                 st.session_state.fired.append("pre")
-                audio_spot.components.v1.html(f'<audio autoplay><source src="{ALARM_URL}" type="audio/ogg"></audio>', height=0)
+                with audio_spot:
+                    st.components.v1.html(f'<audio autoplay><source src="{ALARM_URL}" type="audio/ogg"></audio>', height=0)
 
         elif curr >= times["ready"] and curr < times["main"]:
             status_spot.error(f"🔔 [준비령] 문제지 배부 및 인적사항 기재 시각입니다. ({times['ready'].strftime('%H:%M')})")
             if "ready" not in st.session_state.fired:
                 st.session_state.fired.append("ready")
-                audio_spot.components.v1.html(f'<audio autoplay><source src="{ALARM_URL}" type="audio/ogg"></audio>', height=0)
+                with audio_spot:
+                    st.components.v1.html(f'<audio autoplay><source src="{ALARM_URL}" type="audio/ogg"></audio>', height=0)
 
         elif curr >= times["main"] and curr < times["end"]:
             # 남은 시간 실시간 계산
@@ -93,13 +95,15 @@ if st.session_state.run:
             status_spot.info(f"✍️ [본령] 시험 진행 중 (종료까지 {mins}분 {secs}초 남음)")
             if "main" not in st.session_state.fired:
                 st.session_state.fired.append("main")
-                audio_spot.components.v1.html(f'<audio autoplay><source src="{ALARM_URL}" type="audio/ogg"></audio>', height=0)
+                with audio_spot:
+                    st.components.v1.html(f'<audio autoplay><source src="{ALARM_URL}" type="audio/ogg"></audio>', height=0)
 
         elif curr >= times["end"]:
             status_spot.markdown("<h1 style='text-align: center; color: red;'>🚨 시험 종료 🚨</h1>", unsafe_allow_html=True)
             if "end" not in st.session_state.fired:
                 st.session_state.fired.append("end")
-                audio_spot.components.v1.html(f'<audio autoplay><source src="{ALARM_URL}" type="audio/ogg"></audio>', height=0)
+                with audio_spot:
+                    st.components.v1.html(f'<audio autoplay><source src="{ALARM_URL}" type="audio/ogg"></audio>', height=0)
                 st.balloons()
             st.session_state.run = False
             break
