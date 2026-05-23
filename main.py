@@ -13,7 +13,7 @@ if not os.path.exists("sounds"):
     os.makedirs("sounds")
 
 st.title("⏱️ 수능 실전형 자동 시험 타이머")
-st.caption("※ 실제 수능 시간표 및 종소리 파일과 연동하여 작동합니다 (sounds/ 폴더 기준).")
+st.caption("※ 실제 수능 시간표 및 종소리 파일과 연동하여 작동합니다.")
 
 # 2. 시험 과목 및 테스트 선택 드롭다운
 exam_type = st.selectbox(
