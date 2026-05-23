@@ -19,10 +19,11 @@ ALL_AUDIO_FILES = [
     "16 1525 4교시 탐구 준비령.mp3", "17 1535 4교시 탐구 첫째본령.mp3", "18 1605 4교시 탐구 첫째종료령.mp3", "19 1607 4교시 탐구 둘째본령.mp3", "20 1637 4교시 탐구 둘째종료령.mp3"
 ]
 
-# 2. 시험 과목 및 테스트 선택 드롭다운
+# 2. 시험 과목 및 테스트 선택 드롭다운 (전체 자동 모드 포함)
 exam_type = st.selectbox(
     "진행할 항목을 선택하세요:", 
     [
+        "☀️ 전교시 자동 진행 (1~4교시 전체)",
         "1교시 국어", 
         "2교시 수학", 
         "3교시 영어 (듣기 자동포함)", 
@@ -72,7 +73,7 @@ if st.session_state.run:
             # 20개 파일을 다 돌았으면 종료
             if idx >= len(ALL_AUDIO_FILES):
                 status_spot.success("🎉 모든 종소리 파일 파일 테스트가 완료되었습니다!")
-                st.balloons()
+                # 풍선 애니메이션 삭제됨
                 st.session_state.run = False
                 break
                 
@@ -92,7 +93,6 @@ if st.session_state.run:
             if current_file not in st.session_state.fired:
                 st.session_state.fired.append(current_file)
                 with audio_spot:
-                    # sounds/ 폴더 내 파일 자동 재생 (Streamlit 1.36+ 기능)
                     st.audio(f"sounds/{current_file}", autoplay=True)
 
         # ------------------------------------------------------------------
@@ -104,37 +104,28 @@ if st.session_state.run:
             
             # 교시별 타임라인 스케줄 매핑
             schedules = {}
-            if exam_type == "1교시 국어":
+            
+            # 🌟 [핵심] 전교시 자동 진행 모드일 경우 1교시부터 4교시까지 모두 합침
+            if exam_type == "☀️ 전교시 자동 진행 (1~4교시 전체)":
                 schedules = {
-                    dtime(8, 25): "01 0825 1교시 예비령.mp3",
-                    dtime(8, 35): "02 0835 1교시 준비령.mp3",
-                    dtime(8, 40): "03 0840 1교시 본령.mp3",
-                    dtime(10, 0): "04 1000 1교시 종료령.mp3"
+                    dtime(8, 25): "01 0825 1교시 예비령.mp3", dtime(8, 35): "02 0835 1교시 준비령.mp3", dtime(8, 40): "03 0840 1교시 본령.mp3", dtime(10, 0): "04 1000 1교시 종료령.mp3",
+                    dtime(10, 20): "05 1020 2교시 예비령.mp3", dtime(10, 25): "06 1025 2교시 준비령.mp3", dtime(10, 30): "07 1030 2교시 본령.mp3", dtime(12, 10): "08 1210 2교시 종료령.mp3",
+                    dtime(13, 0): "09 1300 3교시 예비령.mp3", dtime(13, 7): "10 1307 3교시 영어듣기.mp3", dtime(14, 20): "11 1420 3교시 종료령.mp3",
+                    dtime(14, 40): "12 1440 4교시 한국사 예비령.mp3", dtime(14, 45): "13 1445 4교시 한국사 준비령.mp3", dtime(14, 50): "14 1450 4교시 한국사 본령.mp3", dtime(15, 20): "15 1520 4교시 한국사 종료령.mp3",
+                    dtime(15, 25): "16 1525 4교시 탐구 준비령.mp3", dtime(15, 35): "17 1535 4교시 탐구 첫째본령.mp3", dtime(16, 5): "18 1605 4교시 탐구 첫째종료령.mp3",
+                    dtime(16, 7): "19 1607 4교시 탐구 둘째본령.mp3", dtime(16, 37): "20 1637 4교시 탐구 둘째종료령.mp3"
                 }
+            elif exam_type == "1교시 국어":
+                schedules = {dtime(8, 25): "01 0825 1교시 예비령.mp3", dtime(8, 35): "02 0835 1교시 준비령.mp3", dtime(8, 40): "03 0840 1교시 본령.mp3", dtime(10, 0): "04 1000 1교시 종료령.mp3"}
             elif exam_type == "2교시 수학":
-                schedules = {
-                    dtime(10, 20): "05 1020 2교시 예비령.mp3",
-                    dtime(10, 25): "06 1025 2교시 준비령.mp3",
-                    dtime(10, 30): "07 1030 2교시 본령.mp3",
-                    dtime(12, 10): "08 1210 2교시 종료령.mp3"
-                }
+                schedules = {dtime(10, 20): "05 1020 2교시 예비령.mp3", dtime(10, 25): "06 1025 2교시 준비령.mp3", dtime(10, 30): "07 1030 2교시 본령.mp3", dtime(12, 10): "08 1210 2교시 종료령.mp3"}
             elif exam_type == "3교시 영어 (듣기 자동포함)":
-                schedules = {
-                    dtime(13, 0): "09 1300 3교시 예비령.mp3",
-                    dtime(13, 7): "10 1307 3교시 영어듣기.mp3",  # 영어듣기 파일 자동 재생!
-                    dtime(14, 20): "11 1420 3교시 종료령.mp3"
-                }
+                schedules = {dtime(13, 0): "09 1300 3교시 예비령.mp3", dtime(13, 7): "10 1307 3교시 영어듣기.mp3", dtime(14, 20): "11 1420 3교시 종료령.mp3"}
             elif exam_type == "4교시 한국사/탐구 (연속진행)":
                 schedules = {
-                    dtime(14, 40): "12 1440 4교시 한국사 예비령.mp3",
-                    dtime(14, 45): "13 1445 4교시 한국사 준비령.mp3",
-                    dtime(14, 50): "14 1450 4교시 한국사 본령.mp3",
-                    dtime(15, 20): "15 1520 4교시 한국사 종료령.mp3",
-                    dtime(15, 25): "16 1525 4교시 탐구 준비령.mp3",
-                    dtime(15, 35): "17 1535 4교시 탐구 첫째본령.mp3",
-                    dtime(16, 5): "18 1605 4교시 탐구 첫째종료령.mp3",
-                    dtime(16, 7): "19 1607 4교시 탐구 둘째본령.mp3",
-                    dtime(16, 37): "20 1637 4교시 탐구 둘째종료령.mp3"
+                    dtime(14, 40): "12 1440 4교시 한국사 예비령.mp3", dtime(14, 45): "13 1445 4교시 한국사 준비령.mp3", dtime(14, 50): "14 1450 4교시 한국사 본령.mp3", dtime(15, 20): "15 1520 4교시 한국사 종료령.mp3",
+                    dtime(15, 25): "16 1525 4교시 탐구 준비령.mp3", dtime(15, 35): "17 1535 4교시 탐구 첫째본령.mp3", dtime(16, 5): "18 1605 4교시 탐구 첫째종료령.mp3",
+                    dtime(16, 7): "19 1607 4교시 탐구 둘째본령.mp3", dtime(16, 37): "20 1637 4교시 탐구 둘째종료령.mp3"
                 }
 
             # 현재 시간 시계 노출
@@ -146,9 +137,7 @@ if st.session_state.run:
             """, unsafe_allow_html=True)
 
             # 타임라인 체크 및 알람 재생
-            fired_any = False
             for target_time, file_name in schedules.items():
-                # 정각 분/초가 되었을 때 재생
                 if curr.hour == target_time.hour and curr.minute == target_time.minute:
                     if file_name not in st.session_state.fired:
                         st.session_state.fired.append(file_name)
@@ -160,14 +149,18 @@ if st.session_state.run:
             if upcoming:
                 next_time = min(upcoming)
                 next_file = schedules[next_time]
+                
+                # 안내 메시지를 보기 좋게 가공 ("01 0825 1교시 예비령.mp3" -> "1교시 예비령")
+                display_name = " ".join(next_file.split(' ')[2:]).replace('.mp3', '')
+                
                 next_dt = KST.localize(datetime.combine(now.date(), next_time))
                 rem_secs = int((next_dt - now).total_seconds())
                 mins, secs = divmod(rem_secs, 60)
-                status_spot.info(f"⏳ 다음 방송 예정: **{next_file.split(' ')[2]}** ({mins}분 {secs}초 남음)")
+                status_spot.info(f"⏳ 다음 방송 예정: **{display_name}** ({mins}분 {secs}초 남음)")
             else:
                 # 모든 일정이 끝난 경우
-                status_spot.markdown("<h1 style='text-align: center; color: red;'>🚨 해당 교시 시험 종료 🚨</h1>", unsafe_allow_html=True)
-                st.balloons()
+                status_spot.markdown("<h1 style='text-align: center; color: red;'>🚨 모든 시험 일정이 종료되었습니다 🚨</h1>", unsafe_allow_html=True)
+                # 풍선 애니메이션 삭제됨
                 st.session_state.run = False
                 break
 
