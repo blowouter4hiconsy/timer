@@ -42,7 +42,7 @@ if not st.session_state.run:
             # [테스트용 선택 시] 버튼 누른 현재 시간에서 자동으로 분 단위를 더함
             now_init = datetime.now(KST)
             st.session_state.times = {
-                "pre": (now_init + timedelta(minutes=1)).time(),    # 1분 뒤 예비령
+                "pre": (now_init + timedelta(seconds=10)).time(),    # 10초 뒤 예비령
                 "ready": (now_init + timedelta(minutes=2)).time(),  # 2분 뒤 준비령
                 "main": (now_init + timedelta(minutes=3)).time(),   # 3분 뒤 본령
                 "end": (now_init + timedelta(minutes=5)).time()     # 5분 뒤 종료령
@@ -71,9 +71,7 @@ if st.session_state.run and st.session_state.times:
         now = datetime.now(KST)
         curr = now.time()
         times = st.session_state.times
-
-        # 매 초마다 오디오 공간 비우기 (중복 재생 방지)
-        audio_spot.empty()
+        
 
         # 실시간 시계 노출 (시, 분, 초 단위까지 확인 가능)
         clock_spot.markdown(f"""
